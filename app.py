@@ -6,6 +6,7 @@ from flask_jwt_extended import (
 )
 from datetime import datetime
 from math import cos, asin, sqrt
+import pandas as pd
 from decimal import *
 
 
@@ -59,11 +60,11 @@ def add_customer():
 	fb_id = request.form['fbid']
 	find_fbid = mongo.db.costumer.count({'fbid':fb_id})
 	if find_fbid >= 1:
-		return jsonify({'message':'fb_id Has allready use!!'})
+		return jsonify({'message':'fb_id already exists!!'}),400
 	nama = json['name']
 	jk = json['jk']
 	if (jk != "L") and (jk != "P"):
-		return jsonify("Gender must L or P")
+		return jsonify("Gender must L or P"), 400
 	alamat = json['address']
 	no_telp = json['no_telp']
 	data = mongo.db.costumer.insert(
@@ -127,7 +128,7 @@ def customer():
 	search_customer = request.form.get('input_fbid')
 	customer = mongo.db.costumer.find_one({'fbid':search_customer})
 	if customer is None:
-		return jsonify({"message":"Data Not Found"}), 200
+		return jsonify({"message":"Data Not Found"}), 404
 	else:
 		return customer_schema.jsonify(customer), 200
 
@@ -362,6 +363,30 @@ def closest(data, v):
 # 	lonn = request.form['int_lon']
 # 	v = {'lat': NumberInt(latw), 'lon': NumberInt(lonn)}
 # 	return closest(tempDataList, v)
+######################################################################################
+# Upload Excel
+@app.route('/upload', methods=['POST'])
+def uploadExcel():
+    client = MongoClient()
+    df = pd.read_csv(request.files['files'])  # csv file which you want to import
+    records_ = df.to_dict(orient='records')
+	# color = {'tipe'}
+
+    # dict = {'tipe': asfjasfas, color: 'aslkfj'}n
+    # sebelum = {'tipe': asfjasfas, color: ["aslkfj"]}
+    # color_list = sebelum.color
+    # color_list.append(color yg mau dimasukkin)
+    # color_list.append(color)
+    # dict["color"] = color_list
+    # INSERT 1, MASUKAN NYA 1 1 DI FOREACH
+    # FOREACH SETIAP DATA, JIKA DATA SUDAH ADA MASUKAN CEK COLOR NYA DOANG
+    # DI DALAM FOREACH ADA INSERT / SYNTAK INSERT DI DALAM FOREACH
+    # SAAT MAU  INSERT PERTAMA
+
+    result = mongo.db.product.insert(records_)
+    # return jsonify(result)
+    return  str(result)
+
 
 
 #################################################################################3
