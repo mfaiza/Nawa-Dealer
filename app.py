@@ -1,4 +1,4 @@
-from flask_pymongo import PyMongo
+from flask_pymongo import PyMongo, MongoClient
 from flask import Flask, jsonify, request
 from flask_marshmallow import Marshmallow
 from flask_jwt_extended import (
@@ -7,8 +7,8 @@ from flask_jwt_extended import (
 from datetime import datetime
 from math import cos, asin, sqrt
 import pandas as pd
+import uuid
 from decimal import *
-
 
 app = Flask(__name__)
 app.secret_key = 'zsjdfnegee#sd43afsfmni4n3432dsfnnh30djdh3h8hjej9k*'
@@ -20,13 +20,11 @@ mongo = PyMongo(app)
 ma = Marshmallow(app)
 jwt = JWTManager(app)
 
-
 ###############################################################################3
 class CustomerSchema(ma.Schema):
     class Meta:
         # Fields to expose
         fields = ('fbid', 'name', 'jk', 'no_telp', 'address')
-
 
 customer_schema = CustomerSchema()
 customers_schema = CustomerSchema(many=True)
@@ -36,19 +34,12 @@ class ProductSchema(ma.Schema):
         # Fields to expose
         fields = ('type','nl_key', 'color', 'stok', 'price')
 
-
 product_schema = ProductSchema()
 products_schema = ProductSchema(many=True)
 
 # master data produk,color,type, CRUD, import excel, validasi JK pria/wanita, nambah response return + model users , update stock, semua ID pake UUID versi 4,get produckt by UUID, JWT jangan di Params (di header),  #
 
-
-
-
-
-
 ################################################################################3
-
 
 #REGISTER CUSTOMER SUCCESS 80%
 
@@ -68,7 +59,8 @@ def add_customer():
 	alamat = json['address']
 	no_telp = json['no_telp']
 	data = mongo.db.costumer.insert(
-			{'fbid': fb_id, 
+			{'_id': uuid.uuid4(),
+			 'fbid': fb_id, 
 			 'name': nama, 
 			 'jk': jk,
 			 'no_telp': no_telp,  
@@ -81,13 +73,7 @@ def add_customer():
 	else:
 		return jsonify({'message': 'Gagal Input'}), 200
 
-
-
 #################################################################################3
-
-
-
-
 
 @app.route('/protected', methods=['GET'])
 @jwt_required
@@ -97,24 +83,15 @@ def protected():
     return jsonify(logged_in_as=current_user), 200
 #################################################################################3
 
-
 #SHOW ALL CUSTOMER 100%
 
 ''' Mengeluarkan semua data customer '''
-
-
+	
 @app.route('/customer')
 def all_customers():
 	customer = mongo.db.costumer.find()
 	resp = customers_schema.jsonify(customer), 200
 	return resp
-
-
-
-
-
-
-
 
 #################################################################################3
 
@@ -132,19 +109,9 @@ def customer():
 	else:
 		return customer_schema.jsonify(customer), 200
 
-		
-
-
-
-
-
-
-
-
 #################################################################################3
 
 #SHOW ALL PRODUCT SUCCESS 100%
-
 
 ''' Menampilkan semua product '''
 
@@ -154,14 +121,7 @@ def all_product():
 	resp = products_schema.jsonify(products)
 	return resp
 
-
-
-
 #################################################################################3
-
-
-
-
 
 @app.route('/deleteproduk', methods=['GET'])
 def delete_product():
@@ -170,14 +130,9 @@ def delete_product():
 	if delete:
 		return jsonify('Success!')
 
-
-
-
-
 #################################################################################3
 
 #PILIH TYPE PRODUCT SUCCESS 100%
-
 
 ''' Pilih product yang akan di order dengan input type '''
 @app.route('/chooseprdct', methods=['GET'])
@@ -189,14 +144,6 @@ def get_product():
 		return jsonify({"message": "Data not found"}), 200
 	else:
 		return products_schema.jsonify(product), 200
-
-
-
-
-
-
-
-
 
 #################################################################################3
 
@@ -215,16 +162,9 @@ def get_product_color():
 	else:
 		return products_schema.jsonify(product),200
 
-
-
-
-
-
 #################################################################################3
 
-
 # SHOW COLORS
-
 
 '''  '''
 @app.route('/showcolor', methods=['GET'])
@@ -236,10 +176,6 @@ def product_color():
 		return jsonify({"message": "Color Not Found"}), 200
 	else:
 		return products_schema.jsonify(product),200
-
-
-
-
 
 #################################################################################3
 
@@ -257,6 +193,7 @@ def insert_newproduct():
 	price = data['int_price']
 
 	insert = mongo.db.product.insert({
+		'_id': uuid.uuid4(),
 		'type': tipe,
 		'nl_key': nl_key,
 		'color':[{
@@ -272,12 +209,7 @@ def insert_newproduct():
 	
 # 	new_p = mongo.db.product.find({'type':tipe,'nl_key':nl_type,'color':[{'id_color':id_color,'color_name':color_name,'nl_key':nl_color,'stok':stok}],'price':price})
 
-
-
-
-
 #################################################################################3
-
 
 # New Color
 
@@ -295,6 +227,7 @@ def add_newcolor():
 	stok = data['stock']
 	insert = mongo.db.product.update({'nl_key':tipe},{'$push':
 		{
+		'_id': uuid.uuid4(),
 		'color':
 			{
 				'id_color':id_color, 
@@ -309,15 +242,6 @@ def add_newcolor():
 		return jsonify({"message":"Field Required"}), 200
 	else:
 		return jsonify({"message":"Success Fully!"}), 200
-
-
-
-
-
-
-
-
-
 
 #################################################################################3
 
@@ -338,14 +262,12 @@ def order():
 	else:
 		return jsonify({"message":"SUCCESS"}), 200
 
-
-
 # buat Object
 # [{"color_name":"Blue"},{"color_name":"Red"}]
 #################################################################################3
 
+# latlon
 
-# latlon 
 def distance(lat1, lon1, lat2, lon2):
     p = 0.017453292519943295
     a = 0.5 - cos((lat2-lat1)*p)/2 + cos(lat1*p)*cos(lat2*p) * (1-cos((lon2-lon1)*p)) / 2
@@ -353,7 +275,6 @@ def distance(lat1, lon1, lat2, lon2):
 
 def closest(data, v):
     return min(data, key=lambda p: distance(v['lat'],v['lon'],p['lat'],p['lon']))
-
 
 # @app.route('/getlanlot', methods=['GET'])
 # def getCLosestDealer():
@@ -367,28 +288,34 @@ def closest(data, v):
 # Upload Excel
 @app.route('/upload', methods=['POST'])
 def uploadExcel():
-    client = MongoClient()
-    df = pd.read_csv(request.files['files'])  # csv file which you want to import
-    records_ = df.to_dict(orient='records')
-	# color = {'tipe'}
+	# color = pd.read_csv(request.files['product'])
+	# type = {"type":{mongo.db.product.find("type")}, "color":{mongo.db.product.find("color")}}
+	# color_list = type.color
+	# color_list.append(color.color)
+	# type['color'] =  color_list
+	# for c in type:
+	# 	df = pd.read_csv(request.files['product'])
+	# 	records_ = df.to_dict(orient = 'records')
+	# 	result = mongo.db.product.insert_many(records_)
+	# 	return jsonify(result=result)
 
-    # dict = {'tipe': asfjasfas, color: 'aslkfj'}n
+    df = pd.read_csv(request.files['files'])  # csv file which you want to import
+    records_ = df.to_dict(orient = 'records')
+    result = mongo.db.product.insert(records_)
+    return str(result)
+
+	# color = {'tipe'}
+    # dict = {'tipe': asfjasfas, color: 'aslkfj'}
     # sebelum = {'tipe': asfjasfas, color: ["aslkfj"]}
     # color_list = sebelum.color
     # color_list.append(color yg mau dimasukkin)
-    # color_list.append(color)
     # dict["color"] = color_list
+
+
+
     # INSERT 1, MASUKAN NYA 1 1 DI FOREACH
     # FOREACH SETIAP DATA, JIKA DATA SUDAH ADA MASUKAN CEK COLOR NYA DOANG
     # DI DALAM FOREACH ADA INSERT / SYNTAK INSERT DI DALAM FOREACH
-    # SAAT MAU  INSERT PERTAMA
-
-    result = mongo.db.product.insert(records_)
-    # return jsonify(result)
-    return  str(result)
-
-
-
 #################################################################################3
 @app.errorhandler(404)
 def not_found(error=None):
@@ -397,10 +324,7 @@ def not_found(error=None):
         'message': 'Not Found: ' + request.url,
     }
     resp = jsonify(message)
-    return resp, 404
-
+    return resp
 
 if __name__ == '__main__':
-	app.run(debug=True)
-
-
+	app.run(debug=True, port=8080)	
